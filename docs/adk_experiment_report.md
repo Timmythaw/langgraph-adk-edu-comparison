@@ -9,10 +9,10 @@
 This notebook implements an AI Teaching Assistant using **Google Agent Development Kit (ADK) v1.27.1**, running on **Google Colab** with **Vertex AI** as the backend. It is one of two parallel implementations (LangGraph vs Google ADK) used for empirical comparison in the research paper.
 
 ### Research Context
-- **Paper:** Comparative analysis of LangGraph vs Google ADK for AI Teaching Assistants
+- **Paper:** Comparative analysis of LangGraph vs Google ADK for Educational Context
 - **Institution:** Mae Fah Luang University (MFU), Thailand
 - **Evaluation:** 3 test scenarios, 5 runs each (15 total)
-- **Goal:** Replace the theoretical Section V of the paper with empirical findings
+- **Goal:** Provide empirical findings for Section V of the research paper
 
 ### System Purpose
 Automate three instructional tasks for university lecturers:
@@ -33,7 +33,7 @@ Automate three instructional tasks for university lecturers:
 | RAG Backend | Vertex AI Search (Discovery Engine) |
 | Google Cloud Project | `edu-teacher-assistant-prod` |
 | Search Location | `global` |
-| Datastore | `curriculum-connector_1765189225594_gcs_store` |
+| Datastore | `curriculum connector at GCS` |
 | Auth | `google.colab.auth.authenticate_user()` |
 
 ---
