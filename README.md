@@ -191,9 +191,9 @@ The notebooks are self-contained and designed for Colab. Click the badges at the
 If you use this code or findings in your research, please cite:
 
 ```bibtex
-@misc{timmythaw2026lgadk,
-  title  = {A Comparison Framework for LangGraph and Google ADK: Agentic AI Implementation in Educational Context},
-  author = {Timmythaw},
+@misc{thawzinmyoaung_thanthtoosan2026lgadk,
+  title  = {...},
+  author = {Thaw Zin Myo Aung and Thant Htoo San},
   year   = {2026},
   url    = {https://github.com/Timmythaw/langgraph-adk-edu-comparison}
 }
