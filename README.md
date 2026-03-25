@@ -12,7 +12,10 @@
 
 ## Overview
 
-This repository contains two **parallel, functionally-equivalent** AI Teaching Assistant implementations — one built with **LangGraph 1.1.2** and one with **Google ADK 1.27.1** — evaluated against identical test scenarios. Both systems assist university lecturers at Mae Fah Luang University with three core tasks:
+This repository contains two **parallel, functionally-equivalent** AI Teaching
+Assistant implementations — one built with **LangGraph 1.1.2** and one with
+**Google ADK 1.27.1** — evaluated against identical test scenarios. Both systems
+assist university lecturers at Mae Fah Luang University with three core tasks:
 
 | Task | Description |
 |---|---|
@@ -20,64 +23,108 @@ This repository contains two **parallel, functionally-equivalent** AI Teaching A
 | **Quiz Generation** | 10-question MCQ assessments, formatted for instructor review |
 | **Student Email with HITL** | Draft → Human-in-the-Loop approval → Send confirmation |
 
-Both use **Gemini 2.5 Pro** as the orchestrator and **Gemini 2.5 Flash** as worker agents, backed by **Vertex AI Search** for RAG over course materials.
+Both use **Gemini 2.5 Pro** as the orchestrator and **Gemini 2.5 Flash** as
+worker agents, backed by **Vertex AI Search** for RAG over course materials.
+All runs are traced end-to-end via **LangSmith** (project: `langgraph-adk-edu-comparison`).
 
 ---
 
 ## Architecture
 
 ### LangGraph — Stateful Graph with Explicit Routing
-
 ```
-START
-  └── router_node  (keyword + LLM fallback)
-        ├── lesson_planner_node ──────────────────────────► END
-        ├── quiz_content_node ──► quiz_publisher_node ────► END
-        └── email_drafter_node ──► hitl_approval_node
-                                        └── email_sender_node ──► END
+└── router (keyword-first, LLM fallback via gemini-2.5-pro)
+├── lessonplanner ────────────────────────────────────► END
+├── quizcontent ──► quizpublisher ───────────────────► END
+└── emaildrafter ──► hitlapproval
+└── emailsender ────────────► END
 ```
 
 - **Control flow:** Deterministic via `add_conditional_edges`
-- **State:** Typed `TeacherState` dict — shared across all nodes
-- **HITL:** `interrupt()` — instructor can **approve, reject, or edit** the draft
+- **State:** Typed `TeacherState` dict — shared across all nodes (`messages`, `task_type`, `course_materials`, `draft_output`, `final_output`, `hitl_decision`)
+- **HITL:** `input()` pause — instructor can **approve (`yes`), reject (`no`), or paste an edited draft**
 - **Checkpointing:** `MemorySaver` persists full state across interrupts
+- **Token tracking:** Not natively available via `graph.invoke()` — tokens logged as `-1`; available via LangSmith traces
 
 ### Google ADK — Agent-as-Tool with AutoFlow
-
 ```
 RootOrchestrator (LlmAgent, gemini-2.5-pro)
-│  ← AutoFlow routing
-├── lesson_planner_agent (LlmAgent)
-│     └── retrieve_course_materials (Vertex AI Search)
+│ ← AutoFlow routing
+├── lesson_planner_agent (LlmAgent, gemini-2.5-flash)
+│ └── retrieve_course_materials (Vertex AI Search)
 ├── quiz_generator_agent (SequentialAgent)
-│     ├── quiz_content_agent   → output_key="quiz_questions_json"
-│     └── quiz_publisher_agent → reads {quiz_questions_json}
+│ ├── quiz_content_agent → output_key="quiz_questions_json"
+│ └── quiz_publisher_agent → reads {quiz_questions_json}
 └── email_agent (SequentialAgent)
-      ├── email_drafter_agent  → output_key="email_draft"
-      └── email_sender_agent   → HITL gate + confirmation
+├── email_drafter_agent → output_key="email_draft"
+└── email_sender_agent → before_tool_callback HITL + send_email_to_students
 ```
 
 - **Control flow:** Non-deterministic AutoFlow — Gemini reads agent `description` fields
-- **State:** Passed via `output_key` between sequential agents
-- **HITL:** Binary approve/reject only (no in-place editing)
-- **Note:** `output_schema` + `tools` cannot be combined in a single ADK agent — Quiz generation requires a 2-agent workaround
+- **State:** Passed via `output_key` between sequential agents; `InMemorySessionService`
+- **HITL:** Binary approve/reject only via `before_tool_callback` — no in-place draft editing
+- **Resilience:** `HttpRetryOptions` (5 attempts, 5s initial delay, covers 408/429/5xx)
+- **Note:** `output_schema` + `tools` cannot be combined in a single ADK `LlmAgent` — Quiz generation requires a 2-agent `SequentialAgent` workaround
 
 ---
 
 ## Results
 
-All **15 runs** (5 per scenario × 2 frameworks) completed with **100% routing accuracy**.
+All **30 runs** (5 per scenario × 3 scenarios × 2 frameworks) completed with
+**100% routing accuracy**. All latency values are **LangSmith-sourced** (100%
+clean latency, no `time.time()` fallback measurements recorded in either notebook).
 
 ### Latency by Scenario
 
 | Scenario | LangGraph Avg | ADK Avg | Winner |
 |---|---|---|---|
-| Lesson Plan | 23.99s | 21.06s | ADK |
-| Quiz Generation | 21.61s | 27.99s | LangGraph |
-| Email HITL | 9.53s | 15.30s | LangGraph |
-| **Overall** | **18.38s** | **21.45s** | **LangGraph** |
+| Lesson Plan | 26.17s | 24.82s | ADK ✓ |
+| Quiz Generation | 25.50s | 26.39s | LangGraph ✓ |
+| Email HITL | 10.74s | 14.93s | LangGraph ✓ |
+| **Overall** | **20.80s** | **22.05s** | **LangGraph** ✓ |
 
-> Scenario 3 latency includes real human review + typing time (end-to-end HITL measurement).
+> All latency values are LangSmith end-to-end measurements. Scenario 3 includes
+> real human review + typing time for HITL decisions.
+
+### LangGraph Per-Run Detail
+
+| Run | Scenario | Latency (s) |
+|---|---|---|
+| 1 | Lesson Plan | 27.78 |
+| 2 | Lesson Plan | 17.18 |
+| 3 | Lesson Plan | 26.93 |
+| 4 | Lesson Plan | 26.97 |
+| 5 | Lesson Plan | 32.00 |
+| 6 | Quiz Generation | 28.12 |
+| 7 | Quiz Generation | 27.55 |
+| 8 | Quiz Generation | 26.76 |
+| 9 | Quiz Generation | 16.89 |
+| 10 | Quiz Generation | 28.17 |
+| 11 | Email HITL | 12.73 |
+| 12 | Email HITL | 9.44 |
+| 13 | Email HITL | 10.13 |
+| 14 | Email HITL | 10.53 |
+| 15 | Email HITL | 10.87 |
+
+### ADK Per-Run Detail
+
+| Run | Scenario | Latency (s) | Input Tok | Output Tok |
+|---|---|---|---|---|
+| 1 | Lesson Plan | 18.44 | 1164 | 695 |
+| 2 | Lesson Plan | 19.85 | 1346 | 922 |
+| 3 | Lesson Plan | 26.39 | 1401 | 962 |
+| 4 | Lesson Plan | 31.97 | 1449 | 1031 |
+| 5 | Lesson Plan | 27.44 | 1457 | 1018 |
+| 6 | Quiz Generation | 24.13 | 925 | 500 |
+| 7 | Quiz Generation | 32.27 | 1900 | 1015 |
+| 8 | Quiz Generation | 19.21 | 974 | 501 |
+| 9 | Quiz Generation | 28.69 | 1539 | 473 |
+| 10 | Quiz Generation | 27.63 | 1410 | 931 |
+| 11 | Email HITL | 13.97 | 615 | 45 |
+| 12 | Email HITL | 15.32 | 684 | 21 |
+| 13 | Email HITL | 15.15 | 681 | 41 |
+| 14 | Email HITL | 12.49 | 628 | 43 |
+| 15 | Email HITL | 17.70 | 956 | 70 |
 
 ### Latency Charts
 
@@ -93,32 +140,33 @@ All **15 runs** (5 per scenario × 2 frameworks) completed with **100% routing a
 
 | Dimension | LangGraph | Google ADK |
 |---|---|---|
-| Routing | Deterministic (keyword + LLM fallback) | Non-deterministic (AutoFlow) |
-| HITL flexibility | Approve / Reject / **Edit in-place** | Approve / Reject only |
-| State management | Explicit typed `TeacherState` | `output_key` chaining |
-| Framework constraint | None observed | `output_schema` + `tools` conflict → requires 2-agent workaround |
-| Response verbosity | Higher (6,874–9,623 chars for lesson plans) | Lower (3,776–4,652 chars) |
-| Overall avg latency | **18.38s** | 21.45s |
+| Routing | Deterministic (keyword-first, LLM fallback) | Non-deterministic (AutoFlow) |
+| HITL flexibility | Approve / Reject / **Edit in-place** | Approve / Reject only (binary) |
+| State management | Explicit typed `TeacherState` shared across all nodes | `output_key` chaining between sequential agents |
+| Framework constraint | None observed | `output_schema` + `tools` conflict → 2-agent `SequentialAgent` workaround required |
+| Token tracking | Not available natively (`-1` sentinel) | Available via `usage_metadata` events |
+| Latency resilience | No retry logic | `HttpRetryOptions` (5 attempts, covers 429/5xx) |
+| Response verbosity | Higher (lesson plans significantly longer) | Lower/more concise |
+| Overall avg latency | **20.80s** | 22.05s |
 
 ---
 
 ## Repository Structure
-
 ```
 langgraph-adk-edu-comparison/
 ├── notebooks/
-│   ├── 01_langgraph_system.ipynb   # LangGraph implementation + experiment
-│   └── 02_adk_system.ipynb         # Google ADK implementation + experiment
+│ ├── 01_langgraph_system.ipynb # LangGraph implementation + experiment
+│ └── 02_adk_system.ipynb # Google ADK implementation + experiment
 ├── docs/
-│   ├── langgraph_experiment_report.md  # Detailed technical report — LangGraph
-│   └── adk_experiment_report.md        # Detailed technical report — ADK
+│ ├── langgraph_experiment_report.md # Detailed technical report — LangGraph
+│ └── adk_experiment_report.md # Detailed technical report — ADK
 ├── output/
-│   ├── langgraph_metrics.csv       # Raw per-run data (15 rows)
-│   ├── adk_metrics.csv             # Raw per-run data (15 rows)
-│   ├── langgraph_latency.png       # Latency bar chart — LangGraph
-│   ├── adk_latency.png             # Latency bar chart — ADK
-│   └── LG VS ADK.png               # Side-by-side comparison chart
-├── .env.example                    # Environment variable template
+│ ├── langgraph_metrics.csv # Raw per-run data (15 rows)
+│ ├── adk_metrics.csv # Raw per-run data (15 rows)
+│ ├── langgraph_latency_chart.png # Latency bar chart — LangGraph
+│ ├── adk_latency_chart.png # Latency bar chart — ADK
+│ └── LG VS ADK.png # Side-by-side comparison chart
+├── .env.example # Environment variable template
 ├── .gitignore
 ├── LICENSE
 └── README.md
@@ -133,7 +181,7 @@ langgraph-adk-edu-comparison/
 - Python 3.10+
 - Google Cloud project with **Vertex AI API** and **Discovery Engine API** enabled
 - A Vertex AI Search datastore populated with course materials
-- (Optional) LangSmith account for LangGraph tracing
+- LangSmith account for tracing (used by both notebooks — project: `langgraph-adk-edu-comparison`)
 
 ### 1. Clone & Configure
 
@@ -147,22 +195,32 @@ cp .env.example .env
 ### 2. Environment Variables
 
 ```bash
+# Shared
 GOOGLE_CLOUD_PROJECT=your-gcp-project-id
-GOOGLE_CLOUD_LOCATION=us-central1
+GOOGLE_CLOUD_LOCATION=global                    # Vertex AI Search location
 VERTEX_AI_SEARCH_DATASTORE_ID=your-datastore-id
 GOOGLE_APPLICATION_CREDENTIALS=./service-account.json
-LANGCHAIN_TRACING_V2=true               # optional — LangSmith tracing
+
+# LangSmith tracing (used by both notebooks)
+LANGCHAIN_TRACING_V2=true
 LANGCHAIN_API_KEY=your-langsmith-api-key
-LANGCHAIN_PROJECT=teacher-assistant-langgraph
+LANGCHAIN_PROJECT=langgraph-adk-edu-comparison
+LANGCHAIN_ENDPOINT=https://api.smith.langchain.com
+
+# ADK only
+GOOGLE_GENAI_USE_VERTEXAI=1
+LANGSMITH_API_KEY=your-langsmith-api-key        # ADK uses langsmith package directly
 ```
 
 ### 3. Run in Google Colab (Recommended)
 
 The notebooks are self-contained and designed for Colab. Click the badges at the top of this README, then:
 
-1. Store `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`, and `VERTEX_AI_SEARCH_DATASTORE_ID` as **Colab Secrets**
+1. Store `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`, `VERTEX_AI_SEARCH_DATASTORE_ID`, and `LANGSMITH_API_KEY` as **Colab Secrets**
 2. Run all cells in order
-3. Respond to HITL prompts when asked (`yes`/`no`) during Scenario 3
+3. During Scenario 3 (Email HITL):
+   - LangGraph: type `yes` to approve, `no` to reject, or **paste edited text** to approve with changes
+   - ADK: type `yes` to approve or anything else to reject
 
 ---
 
@@ -178,10 +236,12 @@ The notebooks are self-contained and designed for Colab. Click the badges at the
 | Component | LangGraph | Google ADK |
 |---|---|---|
 | Framework | `langgraph 1.1.2` | `google-adk 1.27.1` |
-| Orchestrator LLM | `gemini-2.5-pro` | `gemini-2.5-pro` |
-| Worker LLM | `gemini-2.5-flash` | `gemini-2.5-flash` |
+| Orchestrator LLM | `gemini-2.5-pro` (`ChatGoogleGenerativeAI`, `vertexai=True`) | `gemini-2.5-pro` (`Gemini`, `resilient_pro`) |
+| Worker LLM | `gemini-2.5-flash` (`ChatGoogleGenerativeAI`, `vertexai=True`) | `gemini-2.5-flash` (`Gemini`, `resilient_flash`) |
 | RAG | Vertex AI Search (Discovery Engine) | Vertex AI Search (Discovery Engine) |
-| State | `MemorySaver` (in-memory) | `InMemorySessionService` |
+| State | `MemorySaver` + typed `TeacherState` | `InMemorySessionService` + `output_key` chaining |
+| Retry logic | None | `HttpRetryOptions` (5 attempts, 429/5xx) |
+| Tracing | `LANGCHAIN_TRACING_V2` (native) | `langsmith.integrations.google_adk.configure_google_adk()` |
 | Runtime | Google Colab / Python 3.12 | Google Colab / Python 3.12 |
 
 ---
