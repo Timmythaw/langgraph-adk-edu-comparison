@@ -166,6 +166,9 @@ langgraph-adk-edu-comparison/
 │ ├── langgraph_latency_chart.png # Latency bar chart — LangGraph
 │ ├── adk_latency_chart.png # Latency bar chart — ADK
 │ └── LG VS ADK.png # Side-by-side comparison chart
+├── traces/
+│ ├── langgraph_traces.json # LangSmith traces for all runs
+│ └── adk_traces.json # LangSmith traces for all runs
 ├── .env.example # Environment variable template
 ├── .gitignore
 ├── LICENSE
