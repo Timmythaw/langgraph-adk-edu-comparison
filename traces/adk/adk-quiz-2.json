@@ -1,0 +1,35 @@
+{
+  "inputs": {
+    "scenario": "Scenario 2 - Quiz Generation",
+    "user_input": "Generate 5 multiple-choice questions on Software Testing from the course materials."
+  },
+  "outputs": {
+    "output": [
+      "I have generated a 10-question multiple-choice quiz on Software Testing for you, as requested. Here is the complete quiz:\n\n---\n\n**Software Testing Quiz**\n\n1.  **What is the primary goal of software testing?**\n    A. To prove that software is bug-free.\n    B. To identify defects and ensure the software meets requirements. ✅\n    C. To accelerate the software development process.\n    D. To reduce the cost of software development.\n    **Explanation:** The primary goal of software testing is to find defects and ensure the software functions as expected according to its requirements, rather than proving it's bug-free, which is often an impossible task.\n\n2.  **Which of the following describes Black Box Testing?**\n    A. Testing based on the internal structure and code of the software.\n    B. Testing that focuses on input, output, and the principal function of a software module without knowing its internal structure. ✅\n    C. Testing conducted by end-users to validate the software against business requirements.\n    D. Testing performed to ensure that new code changes do not adversely affect existing functionalities.\n    **Explanation:** Black box testing, as described in the course materials, focuses on inputs, outputs, and the overall functionality of a module from an external perspective, without knowledge of its internal code or structure.\n\n3.  **What type of testing requires knowledge of the internal code structure and design of the software?**\n    A. Black Box Testing\n    B. White Box Testing ✅\n    C. User Acceptance Testing\n    D. Regression Testing\n    **Explanation:** White Box Testing, also known as structural testing, involves examining the internal structure, design, and coding of the software to ensure all paths are tested.\n\n4.  **Which testing level focuses on testing individual components or units of the software in isolation?**\n    A. Integration Testing\n    B. System Testing\n    C. Unit Testing ✅\n    D. Acceptance Testing\n    **Explanation:** Unit testing is the first level of testing, where individual components or modules of the software are tested independently to ensure they work correctly.\n\n5.  **What is the purpose of Integration Testing?**\n    A. To test the software as a complete, integrated system.\n    B. To ensure that individual units of code are working correctly.\n    C. To verify that different modules or services used in an application interact correctly. ✅\n    D. To validate the software against the user's business requirements.\n    **Explanation:** Integration testing focuses on verifying the communication and interaction between different modules or components after they have been individually unit tested.\n\n6.  **Which type of testing is performed to ensure that an existing feature still works as intended after modifications or new features have been added?**\n    A. Smoke Testing\n    B. Sanity Testing\n    C. Regression Testing ✅\n    D. Performance Testing\n    **Explanation:** Regression testing is crucial to ensure that recent code changes, bug fixes, or new functionalities have not introduced new defects or negatively impacted existing features.\n\n7.  **Who typically performs User Acceptance Testing (UAT)?**\n    A. Software Developers\n    B. Independent Testers\n    C. End-users or Clients ✅\n    D. Quality Assurance Managers\n    **Explanation:** User Acceptance Testing (UAT) is performed by the actual end-users or clients to confirm that the software meets their business requirements and is ready for deployment.\n\n8.  **What document describes the scope, approach, resources, and schedule of intended test activities?**\n    A. Requirements Specification Document\n    B. Design Document\n    C. Test Plan ✅\n    D. User Manual\n    **Explanation:** A Test Plan is a detailed document that outlines the strategy, objectives, schedule, resources, and deliverables for the testing process.\n\n9.  **Why is it generally more effective to find and fix defects earlier in the Software Development Life Cycle (SDLC)?**\n    A. Because testers are only available at the beginning of the project.\n    B. Because defects found later are more costly and difficult to fix. ✅\n    C. Because early defects indicate a fundamental flaw in the project idea.\n    D. Because it allows for more time to develop new features.\n    **Explanation:** The cost of fixing defects increases significantly as they are discovered later in the SDLC, making early detection a critical aspect of efficient software development.\n\n10. **Which of the following is NOT a common type of functional testing?**\n    A. Unit Testing\n    B. Integration Testing\n    C. Performance Testing ✅\n    D. System Testing\n    **Explanation:** Performance testing is a non-functional testing type that evaluates how software performs under various workloads, whereas Unit, Integration, and System testing are all forms of functional testing.\n\n---",
+      32.27,
+      1900,
+      1015,
+      "019d2355-b1ff-74e2-85be-3467c318a8df"
+    ]
+  },
+  "metadata": {
+    "app": "teacher-assistant-adk",
+    "framework": "Google ADK",
+    "ls_method": "traceable",
+    "ls_run_depth": 0
+  },
+  "langsmith": {
+    "organization": {
+      "name": "Personal",
+      "id": "a59ed038-62e5-4e3c-b259-ca456ae9ace4"
+    },
+    "workspace": {
+      "name": "Workspace 1",
+      "id": "e5ac3f62-06c8-4659-a85c-82a434c9ae51"
+    },
+    "tracing_project": {
+      "id": "2dc60e3a-0284-47fe-a46f-ebf8bdf1ce95",
+      "name": "langgraph-adk-edu-comparison"
+    }
+  }
+}

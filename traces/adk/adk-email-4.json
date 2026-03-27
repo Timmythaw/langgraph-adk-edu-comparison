@@ -1,0 +1,35 @@
+{
+  "inputs": {
+    "scenario": "Scenario 3 - Email HITL",
+    "user_input": "Draft and send an email to all students reminding them that the Software Testing quiz covering Unit Testing and Black Box Testing is next Monday at 9am. Include what topics to study."
+  },
+  "outputs": {
+    "output": [
+      "I have drafted and sent an email to all students reminding them about the upcoming quiz. The email has been sent to all students. The subject was \"Reminder: Software Testing Quiz - Unit Testing & Black Box Testing\".",
+      12.49,
+      628,
+      43,
+      "019d2365-e5fa-73d0-8994-936c47ef0d78"
+    ]
+  },
+  "metadata": {
+    "app": "teacher-assistant-adk",
+    "framework": "Google ADK",
+    "ls_method": "traceable",
+    "ls_run_depth": 0
+  },
+  "langsmith": {
+    "organization": {
+      "name": "Personal",
+      "id": "a59ed038-62e5-4e3c-b259-ca456ae9ace4"
+    },
+    "workspace": {
+      "name": "Workspace 1",
+      "id": "e5ac3f62-06c8-4659-a85c-82a434c9ae51"
+    },
+    "tracing_project": {
+      "id": "2dc60e3a-0284-47fe-a46f-ebf8bdf1ce95",
+      "name": "langgraph-adk-edu-comparison"
+    }
+  }
+}

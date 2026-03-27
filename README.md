@@ -108,23 +108,23 @@ clean latency, no `time.time()` fallback measurements recorded in either noteboo
 
 ### ADK Per-Run Detail
 
-| Run | Scenario | Latency (s) | Input Tok | Output Tok |
-|---|---|---|---|---|
-| 1 | Lesson Plan | 18.44 | 1164 | 695 |
-| 2 | Lesson Plan | 19.85 | 1346 | 922 |
-| 3 | Lesson Plan | 26.39 | 1401 | 962 |
-| 4 | Lesson Plan | 31.97 | 1449 | 1031 |
-| 5 | Lesson Plan | 27.44 | 1457 | 1018 |
-| 6 | Quiz Generation | 24.13 | 925 | 500 |
-| 7 | Quiz Generation | 32.27 | 1900 | 1015 |
-| 8 | Quiz Generation | 19.21 | 974 | 501 |
-| 9 | Quiz Generation | 28.69 | 1539 | 473 |
-| 10 | Quiz Generation | 27.63 | 1410 | 931 |
-| 11 | Email HITL | 13.97 | 615 | 45 |
-| 12 | Email HITL | 15.32 | 684 | 21 |
-| 13 | Email HITL | 15.15 | 681 | 41 |
-| 14 | Email HITL | 12.49 | 628 | 43 |
-| 15 | Email HITL | 17.70 | 956 | 70 |
+| Run | Scenario | Latency (s) |
+|---|---|---|
+| 1 | Lesson Plan | 18.44 |
+| 2 | Lesson Plan | 19.85 |
+| 3 | Lesson Plan | 26.39 |
+| 4 | Lesson Plan | 31.97 |
+| 5 | Lesson Plan | 27.44 |
+| 6 | Quiz Generation | 24.13 | 
+| 7 | Quiz Generation | 32.27 |
+| 8 | Quiz Generation | 19.21 | 
+| 9 | Quiz Generation | 28.69 |
+| 10 | Quiz Generation | 27.63 |
+| 11 | Email HITL | 13.97 |
+| 12 | Email HITL | 15.32 |
+| 13 | Email HITL | 15.15 |
+| 14 | Email HITL | 12.49 |
+| 15 | Email HITL | 17.70 |
 
 ### Latency Charts
 
