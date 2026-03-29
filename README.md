@@ -78,10 +78,10 @@ clean latency, no `time.time()` fallback measurements recorded in either noteboo
 
 | Scenario | LangGraph Avg | ADK Avg | Winner |
 |---|---|---|---|
-| Lesson Plan | 26.17s | 24.82s | ADK ✓ |
-| Quiz Generation | 25.50s | 26.39s | LangGraph ✓ |
-| Email HITL | 10.74s | 14.93s | LangGraph ✓ |
-| **Overall** | **20.80s** | **22.05s** | **LangGraph** ✓ |
+| Lesson Plan | 26.17s | 24.82s | ADK |
+| Quiz Generation | 25.50s | 26.39s | LangGraph |
+| Email HITL | 10.74s | 14.93s | LangGraph |
+| **Overall** | **20.80s** | **22.05s** | **LangGraph** |
 
 > All latency values are LangSmith end-to-end measurements. Scenario 3 includes
 > real human review + typing time for HITL decisions.
@@ -141,11 +141,9 @@ clean latency, no `time.time()` fallback measurements recorded in either noteboo
 | Dimension | LangGraph | Google ADK |
 |---|---|---|
 | Routing | Deterministic (keyword-first, LLM fallback) | Non-deterministic (AutoFlow) |
-| HITL flexibility | Approve / Reject / **Edit in-place** | Approve / Reject only (binary) |
 | State management | Explicit typed `TeacherState` shared across all nodes | `output_key` chaining between sequential agents |
 | Framework constraint | None observed | `output_schema` + `tools` conflict → 2-agent `SequentialAgent` workaround required |
 | Token tracking | Not available natively (`-1` sentinel) | Available via `usage_metadata` events |
-| Latency resilience | No retry logic | `HttpRetryOptions` (5 attempts, covers 429/5xx) |
 | Response verbosity | Higher (lesson plans significantly longer) | Lower/more concise |
 | Overall avg latency | **20.80s** | 22.05s |
 

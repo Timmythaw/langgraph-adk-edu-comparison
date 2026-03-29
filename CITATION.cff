@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+message: "If you use this software or results in your research, please cite it using the metadata below."
+type: software
+title: "A Comparison Framework for LangGraph and Google ADK: Agentic AI implementation in Educational Context"
+abstract: >
+The inability of conversational AI systems to execute multi-step instructional tasks autonomously has been identified as the Action Gap in educational AI research. Agentic AI frameworks can close this gap, but selecting the appropriate framework for educational deployment remains an open problem. This paper presents a comparative analysis of two leading orchestration frameworks: LangGraph and Google Agent Development Kit (ADK). Both frameworks are evaluated against the Agentic Workflow for Education (AWE) standards and institutional governance requirements including Human-in-the-Loop (HITL) oversight, Thailand's Personal Data Protection Act (PDPA) and the General Data Protection Regulation (GDPR). An empirical experiment was conducted at Mae Fah Luang University using a Software Testing course as the instructional context. Functionally equivalent AI Teaching Assistant prototypes were implemented in both frameworks. Both frameworks achieved 100% routing accuracy. LangGraph achieved a lower overall mean latency of 20.80s compared to 22.05s for ADK. 
+authors:
+  - family-names: "Myo Aung"
+    given-names: "Thaw Zin"
+    affiliation: "Mae Fah Luang University"
+  - family-names: "San"
+    given-names: "Thant Htoo"
+    affiliation: "Mae Fah Luang University"
+repository-code: "https://github.com/Timmythaw/langgraph-adk-edu-comparison"
+url: "https://github.com/Timmythaw/langgraph-adk-edu-comparison"
+license: MIT
+version: "1.0.0"
+date-released: "2026-03-30"
+keywords:
+  - agentic AI
+  - LangGraph
+  - Google ADK
+  - multi-agent systems
+  - AI teaching assistant
+  - educational AI
+  - human-in-the-loop
+  - retrieval-augmented generation
+  - HITL
+  - Mae Fah Luang University
