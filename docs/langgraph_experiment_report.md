@@ -16,8 +16,8 @@ in the research paper.
 ### Research Context
 - **Paper:** Comparative analysis of LangGraph vs Google ADK for Educational Context
 - **Institution:** Mae Fah Luang University (MFU), Thailand
-- **Evaluation:** 3 test scenarios, 5 runs each (15 total)
-- **Goal:** Provide empirical findings for Section V of the research paper
+- **Evaluation:** 3 test scenarios, 5 runs each (15 total) for latency; 3 runs per scenario for quality evaluation
+- **Goal:** Provide empirical findings for the research paper
 
 ### System Purpose
 Automate three instructional tasks for university lecturers:
@@ -36,9 +36,9 @@ Automate three instructional tasks for university lecturers:
 | LLM — Orchestrator | `gemini-2.5-pro` (via `ChatGoogleGenerativeAI`, `vertexai=True`) |
 | LLM — Worker nodes | `gemini-2.5-flash` (via `ChatGoogleGenerativeAI`, `vertexai=True`) |
 | RAG Backend | Vertex AI Search (Discovery Engine) |
-| Google Cloud Project | (Configured in Google Cloud Console) |
+| Google Cloud Project | (Configured via Colab Secrets) |
 | Search Location | `global` |
-| Datastore | (GCS-backed) |
+| Datastore | (GCS-backed, configured via Colab Secrets) |
 | Vertex AI Init Location | `us-central1` |
 | Auth | `google.colab.auth.authenticate_user()` |
 | Checkpointer | `MemorySaver` (in-memory) |
@@ -62,10 +62,10 @@ not LLM discretion.
 ```
 START
 └── router (gemini-2.5-pro, keyword-first then LLM fallback)
-├── lessonplanner ─────────────────────────────────► END
-├── quizcontent ──► quizpublisher ──────────────────► END
-└── emaildrafter ──► hitlapproval
-└── emailsender ──────────► END
+    ├── lessonplanner ────────────────────────────────────► END
+    ├── quizcontent ──► quizpublisher ──────────────────► END
+    └── emaildrafter ──► hitlapproval
+                          └── emailsender ──────────► END
 ```
 
 > **Note:** Actual node names in the compiled graph are `lessonplanner`,
@@ -212,10 +212,10 @@ tracing. It creates a fresh UUID `thread_id` per run, passes scenario metadata
 in `config`, invokes the graph synchronously via `graph.invoke()`, and captures
 the LangSmith run ID from `get_current_run_tree()`.
 
-**Token counts:** LangGraph does not expose per-message token counts natively.
-`input_tokens` and `output_tokens` are set to `-1` as a sentinel value
-(indicating "not available") — unlike the ADK notebook which captures
-`usage_metadata` from events.
+**Token counts:** LangGraph does not expose per-message token counts natively via `graph.invoke()`.
+`input_tokens` and `output_tokens` are set to `-1` as a sentinel value — unlike
+the ADK notebook which captures `usage_metadata` from events. Token data is
+accessible via LangSmith traces.
 
 Latency is sourced preferentially from LangSmith via `fetch_ls_latency(ls_run_id)`,
 which polls with `retries=6, delay=5.0s` before falling back to `time.time()`
@@ -239,10 +239,6 @@ Per-run data recorded to `langgraph_metrics.csv`:
 | `output_tokens` | Always `-1` (not natively available in LangGraph) |
 | `response_length` | Character count of `final_output` |
 | `error` | Error message if run failed |
-
-> Note: Unlike the ADK notebook, `input_tokens` and `output_tokens` cannot be
-> captured from LangGraph's `graph.invoke()` return value. `-1` is used as a
-> sentinel. Token data for LangGraph is available via LangSmith traces only.
 
 ---
 
@@ -307,10 +303,56 @@ values are LangSmith-sourced (100% `langsmith` source rate across all scenarios)
 
 ---
 
-## 11. Output Files
+## 11. Quality Evaluation Results (LLM-as-a-Judge — Notebook 03)
+
+3 runs per scenario evaluated by `gemini-2.5-pro` on 5 criteria (max 5 each, total 25).
+
+| Scenario | Runs | Avg Total | Accuracy | Completeness | Clarity | Edu Relevance | Task Adherence |
+|---|---|---|---|---|---|---|---|
+| Lesson Plan | 3 | 25.00 | 5.0 | 5.00 | 5.0 | 5.00 | 5.00 |
+| Quiz Generation | 3 | 22.33 | 5.0 | 5.00 | 5.0 | 2.33 | 5.00 |
+| Email HITL | 3 | 25.00 | 5.0 | 5.00 | 5.0 | 5.00 | 5.00 |
+| **Overall** | **9** | **24.11** | **5.0** | **5.00** | **5.00** | **4.11** | **5.00** |
+
+> Quiz edu_relevance (2.33) was lower due to repetitive questions derived from a small set of retrieved chunks.
+> LangGraph achieved perfect scores in completeness, clarity, and task_adherence overall.
+
+---
+
+## 12. RAG Faithfulness (RAGAS — Notebook 04)
+
+| Scenario | Faithfulness | Answer Relevancy | Context Precision | Contexts Retrieved |
+|---|---|---|---|---|
+| Lesson Plan | 0.964 | 0.797 | 0.000 | 2 chunks |
+| Quiz | 0.115 | 0.647 | 0.000 | 2 chunks |
+| Email | 0.110 | 0.581 | 0.000 | 2 chunks |
+
+> Lesson plan faithfulness (0.964) is the highest across both frameworks, indicating strong grounding in retrieved course materials.
+
+---
+
+## 13. Hallucination Analysis (Notebook 05)
+
+| Scenario | Groundedness | RAGAS Faithfulness | Composite Halluc % |
+|---|---|---|---|
+| Lesson Plan | 1.0 | 0.964 | **34.5%** |
+| Quiz | 1.0 | 0.115 | 62.8% |
+| Email | 1.0 | 0.110 | 63.0% |
+
+> LangGraph achieves the lowest composite hallucination score in lesson plan generation (34.5%) across both frameworks.
+
+---
+
+## 14. Output Files
 
 | File | Description |
 |---|---|
-| `langgraph_metrics.csv` | Raw per-run metrics (15 rows), downloaded via `files.download` |
+| `langgraph_metrics.csv` | Raw per-run latency metrics (15 rows) |
 | `langgraph_latency_chart.png` | Bar chart of avg latency by scenario with LangSmith source % |
+| `judge_results.csv` | Per-run LLM Judge scores |
+| `judge_radar_overall.png` | Radar chart comparing LangGraph vs ADK quality dimensions |
+| `ragas_comparison_chart.png` | RAGAS metric comparison chart |
+| `hallucination_results.csv` | Per-run hallucination scores |
+| `hallucination_composite.csv` | Aggregated composite hallucination by framework and scenario |
+| `hallucination_heatmap.png` | Heatmap of composite hallucination % |
 | `01_langgraph_system.ipynb` | Full experiment notebook with cell outputs |
