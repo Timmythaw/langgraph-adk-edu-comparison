@@ -16,8 +16,8 @@ empirical comparison in the research paper.
 ### Research Context
 - **Paper:** Comparative analysis of LangGraph vs Google ADK for Educational Context
 - **Institution:** Mae Fah Luang University (MFU), Thailand
-- **Evaluation:** 3 test scenarios, 5 runs each (15 total)
-- **Goal:** Provide empirical findings for Section V of the research paper
+- **Evaluation:** 3 test scenarios, 5 runs each (15 total) for latency; 3 runs per scenario for quality evaluation
+- **Goal:** Provide empirical findings for the research paper
 
 ### System Purpose
 Automate three instructional tasks for university lecturers:
@@ -36,9 +36,9 @@ Automate three instructional tasks for university lecturers:
 | LLM — Orchestrator | `gemini-2.5-pro` (via `resilient_pro`) |
 | LLM — Sub-agents | `gemini-2.5-flash` (via `resilient_flash`) |
 | RAG Backend | Vertex AI Search (Discovery Engine) |
-| Google Cloud Project | (Configured in Google Cloud Console) |
+| Google Cloud Project | (Configured via Colab Secrets) |
 | Search Location | `global` |
-| Datastore | (GCS-backed) |
+| Datastore | (GCS-backed, configured via Colab Secrets) |
 | Vertex AI Init Location | `us-central1` |
 | Auth | `google.colab.auth.authenticate_user()` |
 | Vertex AI backend | `GOOGLE_GENAI_USE_VERTEXAI=1` |
@@ -56,15 +56,15 @@ agent `description` fields.
 
 ```
 RootOrchestrator (LlmAgent, resilient_pro / gemini-2.5-pro)
-│ ← AutoFlow routing
+│  ← AutoFlow routing
 ├── lesson_planner_agent (LlmAgent, resilient_flash)
-│ └── retrieve_course_materials (Vertex AI Search)
+│    └── retrieve_course_materials (Vertex AI Search)
 ├── quiz_generator_agent (SequentialAgent)
-│ ├── quiz_content_agent → output_key="quiz_questions_json"
-│ └── quiz_publisher_agent → reads {quiz_questions_json}
+│    ├── quiz_content_agent → output_key="quiz_questions_json"
+│    └── quiz_publisher_agent → reads {quiz_questions_json}
 └── email_agent (SequentialAgent)
-├── email_drafter_agent → output_key="email_draft"
-└── email_sender_agent → before_tool_callback HITL + send_email_to_students
+     ├── email_drafter_agent → output_key="email_draft"
+     └── email_sender_agent → before_tool_callback HITL + send_email_to_students
 ```
 
 ### Key ADK Constraints Observed
@@ -88,7 +88,7 @@ resilient_http_options = types.HttpOptions(
     retry_options=types.HttpRetryOptions(
         attempts=5,
         initial_delay=5.0,
-        http_status_codes=
+        http_status_codes=[408, 429, 500, 502, 503, 504]
     )
 )
 
@@ -194,7 +194,7 @@ Per-run data recorded to `adk_metrics.csv`:
 | `response_length` | Character count of response |
 | `error` | Error message if run failed |
 
-> Note: `timestamp` and `framework` fields from the earlier version are **not** present in the current notebook. `retry_count` is also not logged — retry resilience is handled at the SDK layer via `HttpRetryOptions`.
+> Note: `timestamp` and `framework` fields are **not** present in the current notebook. `retry_count` is also not logged — retry resilience is handled at the SDK layer via `HttpRetryOptions`.
 
 ---
 
@@ -235,11 +235,11 @@ values are LangSmith-sourced (100% `langsmith` source rate across all scenarios)
 | 1 | Lesson Plan | 18.44 | langsmith |
 | 2 | Lesson Plan | 19.85 | langsmith |
 | 3 | Lesson Plan | 26.39 | langsmith |
-| 4 | Lesson Plan | 31.97 | langsmith | 
-| 5 | Lesson Plan | 27.44 | langsmith | 
-| 6 | Quiz Generation | 24.13 | langsmith 
-| 7 | Quiz Generation | 32.27 | langsmith | 
-| 8 | Quiz Generation | 19.21 | langsmith 
+| 4 | Lesson Plan | 31.97 | langsmith |
+| 5 | Lesson Plan | 27.44 | langsmith |
+| 6 | Quiz Generation | 24.13 | langsmith |
+| 7 | Quiz Generation | 32.27 | langsmith |
+| 8 | Quiz Generation | 19.21 | langsmith |
 | 9 | Quiz Generation | 28.69 | langsmith |
 | 10 | Quiz Generation | 27.63 | langsmith |
 | 11 | Email HITL | 13.97 | langsmith |
@@ -249,7 +249,7 @@ values are LangSmith-sourced (100% `langsmith` source rate across all scenarios)
 | 15 | Email HITL | 17.70 | langsmith |
 
 ### Key Observations
-- **Quiz Generation was the slowest** (26.39s avg
+- **Quiz Generation was the slowest** (26.39s avg) due to the 2-agent SequentialAgent workaround
 - **Email HITL was the fastest** (14.93s avg); HITL decision time is included but input() was answered promptly
 - **`output_schema` + `tools` constraint required a 2-agent workaround** for Quiz Generation — adds architectural complexity vs LangGraph
 - **HITL is binary only** via `before_tool_callback` — instructors cannot modify drafts mid-pause
@@ -259,10 +259,53 @@ values are LangSmith-sourced (100% `langsmith` source rate across all scenarios)
 
 ---
 
-## 12. Output Files
+## 12. Quality Evaluation Results (LLM-as-a-Judge — Notebook 03)
+
+3 runs per scenario evaluated by `gemini-2.5-pro` on 5 criteria (max 5 each, total 25).
+
+| Scenario | Runs | Avg Total | Accuracy | Completeness | Clarity | Edu Relevance | Task Adherence |
+|---|---|---|---|---|---|---|---|
+| Lesson Plan | 3 | 22.33 | 5.0 | 4.67 | 5.0 | 4.67 | 3.00 |
+| Quiz Generation | 3 | 23.00 | 5.0 | 5.00 | 5.0 | 3.00 | 5.00 |
+| Email HITL | 3 | 19.67 | 5.0 | 3.67 | 4.0 | 3.33 | 3.67 |
+| **Overall** | **9** | **21.67** | **5.0** | **4.44** | **4.67** | **3.67** | **3.89** |
+
+> Email Run 3 returned only a send confirmation without the draft content, scoring 10/25 and pulling down the email average.
+
+---
+
+## 13. RAG Faithfulness (RAGAS — Notebook 04)
+
+| Scenario | Faithfulness | Answer Relevancy | Context Precision | Contexts Retrieved |
+|---|---|---|---|---|
+| Lesson Plan | 0.705 | 0.815 | 0.000 | 2–6 chunks |
+| Quiz | 0.037 | 0.739 | 0.667 | 2 chunks |
+| Email | 0.000 | 0.434 | 0.000 | 0 chunks |
+
+> Email runs retrieved 0 contexts (RAG was not triggered), resulting in faithfulness = 0.000.
+
+---
+
+## 14. Hallucination Analysis (Notebook 05)
+
+| Scenario | Groundedness | RAGAS Faithfulness | Composite Halluc % |
+|---|---|---|---|
+| Lesson Plan | 1.0 | 0.705 | 43.2% |
+| Quiz | 1.0 | 0.037 | 65.4% |
+| Email | 1.0 | 0.000 | 66.7% |
+
+---
+
+## 15. Output Files
 
 | File | Description |
 |---|---|
-| `adk_metrics.csv` | Raw per-run metrics (15 rows), downloaded via `files.download` |
+| `adk_metrics.csv` | Raw per-run latency metrics (15 rows) |
 | `adk_latency_chart.png` | Bar chart of avg latency by scenario with LangSmith source % |
+| `judge_results.csv` | Per-run LLM Judge scores |
+| `judge_radar_overall.png` | Radar chart comparing LangGraph vs ADK quality dimensions |
+| `ragas_comparison_chart.png` | RAGAS metric comparison chart |
+| `hallucination_results.csv` | Per-run hallucination scores |
+| `hallucination_composite.csv` | Aggregated composite hallucination by framework and scenario |
+| `hallucination_heatmap.png` | Heatmap of composite hallucination % |
 | `02_adk_system.ipynb` | Full experiment notebook with cell outputs |
