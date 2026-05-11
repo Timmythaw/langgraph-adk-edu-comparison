@@ -298,7 +298,7 @@ If you use this code or findings in your research, please cite:
 ```bibtex
 @misc{thawzinmyoaung_thanthtoosan2026lgadk,
   title  = {A Comparison Framework for LangGraph and Google ADK: Agentic AI Implementation in Educational Context},
-  author = {Thaw Zin Myo Aung and Thant Htoo San},
+  author = {Dr. Nang Hsu Mon Pyae, Thaw Zin Myo Aung and Thant Htoo San},
   year   = {2026},
   url    = {https://github.com/Timmythaw/langgraph-adk-edu-comparison}
 }
