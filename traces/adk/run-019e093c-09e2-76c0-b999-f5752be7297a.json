@@ -1,15 +1,13 @@
 {
   "inputs": {
     "scenario": "Scenario 3 - Email HITL",
-    "user_input": "Draft and send an email to all students reminding them that the Software Testing quiz covering Unit Testing and Black Box Testing is next Monday at 9am. Include what topics to study."
+    "user_input": "Draft and send an email to all students reminding them that the Software Testing quiz covering Unit Testing and Black Box Testing is next Monday at 9am. Include what topics to study and how to prepare."
   },
   "outputs": {
     "output": [
-      "I have sent an email to all students reminding them that the Software Testing quiz covering Unit Testing and Black Box Testing is next Monday at 9am, and I included the topics to study. The email has been successfully sent.",
-      13.97,
-      615,
-      45,
-      "019d2362-0e43-7d70-8360-2b55c9102633"
+      "I have drafted an email to all students reminding them about the upcoming Software Testing quiz. However, the email was rejected and therefore not sent.",
+      10.91,
+      "019e093c-09e2-76c0-b999-f5752be7297a"
     ]
   },
   "metadata": {

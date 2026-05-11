@@ -1,15 +1,13 @@
 {
   "inputs": {
     "scenario": "Scenario 3 - Email HITL",
-    "user_input": "Draft and send an email to all students reminding them that the Software Testing quiz covering Unit Testing and Black Box Testing is next Monday at 9am. Include what topics to study."
+    "user_input": "Draft and send an email to all students reminding them that the Software Testing quiz covering Unit Testing and Black Box Testing is next Monday at 9am. Include what topics to study and how to prepare."
   },
   "outputs": {
     "output": [
-      "I have delegated your request to the email agent. The email was rejected by the instructor and not sent.",
-      15.32,
-      684,
-      21,
-      "019d2363-540e-7993-84c8-690a36956b91"
+      "I have drafted an email for you, but it was rejected. If you provide me with feedback or a revised request, I can draft another version for you to review and approve.",
+      11.65,
+      "019e092f-5dd3-7ce2-bd7c-845af1d3334f"
     ]
   },
   "metadata": {

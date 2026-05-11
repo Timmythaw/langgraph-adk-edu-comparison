@@ -1,7 +1,7 @@
 framework,scenario,groundedness_score,ragas_faithfulness,judge_accuracy,composite_halluc_pct,avg_latency
-LangGraph,lesson_plan,0.72,,,72.0,78.0
-LangGraph,quiz,0.0,,,0.0,23.85
-LangGraph,email,0.938,,,93.8,9.61
-Google ADK,lesson_plan,0.522,,,52.2,28.45
-Google ADK,quiz,0.361,,,36.1,38.6
-Google ADK,email,1.0,,,100.0,16.5
+LangGraph,lesson_plan,1.0,0.964,5.0,34.5,114.37
+LangGraph,quiz,1.0,0.115,5.0,62.8,22.59
+LangGraph,email,1.0,0.11,5.0,63.0,7.21
+Google ADK,lesson_plan,1.0,0.705,5.0,43.2,57.36
+Google ADK,quiz,1.0,0.037,5.0,65.4,31.19
+Google ADK,email,1.0,0.0,5.0,66.7,11.74
