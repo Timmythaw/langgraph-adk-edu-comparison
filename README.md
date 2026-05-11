@@ -27,6 +27,10 @@ Both use **Gemini 2.5 Pro** as the orchestrator and **Gemini 2.5 Flash** as
 worker agents, backed by **Vertex AI Search** for RAG over course materials.
 All runs are traced end-to-end via **LangSmith** (project: `langgraph-adk-edu-comparison`).
 
+The evaluation pipeline spans **5 notebooks** covering latency benchmarking,
+LLM-as-a-Judge quality scoring, RAGAS RAG faithfulness evaluation, and
+hallucination analysis.
+
 ---
 
 ## Architecture
@@ -34,10 +38,10 @@ All runs are traced end-to-end via **LangSmith** (project: `langgraph-adk-edu-co
 ### LangGraph — Stateful Graph with Explicit Routing
 ```
 └── router (keyword-first, LLM fallback via gemini-2.5-pro)
-├── lessonplanner ────────────────────────────────────► END
-├── quizcontent ──► quizpublisher ───────────────────► END
-└── emaildrafter ──► hitlapproval
-└── emailsender ────────────► END
+    ├── lessonplanner ────────────────────────────────────► END
+    ├── quizcontent ──► quizpublisher ───────────────────► END
+    └── emaildrafter ──► hitlapproval
+                         └── emailsender ────────────► END
 ```
 
 - **Control flow:** Deterministic via `add_conditional_edges`
@@ -49,15 +53,15 @@ All runs are traced end-to-end via **LangSmith** (project: `langgraph-adk-edu-co
 ### Google ADK — Agent-as-Tool with AutoFlow
 ```
 RootOrchestrator (LlmAgent, gemini-2.5-pro)
-│ ← AutoFlow routing
+│  ← AutoFlow routing
 ├── lesson_planner_agent (LlmAgent, gemini-2.5-flash)
-│ └── retrieve_course_materials (Vertex AI Search)
+│    └── retrieve_course_materials (Vertex AI Search)
 ├── quiz_generator_agent (SequentialAgent)
-│ ├── quiz_content_agent → output_key="quiz_questions_json"
-│ └── quiz_publisher_agent → reads {quiz_questions_json}
+│    ├── quiz_content_agent → output_key="quiz_questions_json"
+│    └── quiz_publisher_agent → reads {quiz_questions_json}
 └── email_agent (SequentialAgent)
-├── email_drafter_agent → output_key="email_draft"
-└── email_sender_agent → before_tool_callback HITL + send_email_to_students
+     ├── email_drafter_agent → output_key="email_draft"
+     └── email_sender_agent → before_tool_callback HITL + send_email_to_students
 ```
 
 - **Control flow:** Non-deterministic AutoFlow — Gemini reads agent `description` fields
@@ -68,13 +72,26 @@ RootOrchestrator (LlmAgent, gemini-2.5-pro)
 
 ---
 
+## Evaluation Pipeline
+
+The full evaluation spans **5 notebooks** run in sequence:
+
+| Notebook | Purpose |
+|---|---|
+| `01_langgraph_system.ipynb` | LangGraph implementation + 15-run latency experiment |
+| `02_adk_system.ipynb` | Google ADK implementation + 15-run latency experiment |
+| `03_llm_judge.ipynb` | LLM-as-a-Judge quality scoring (accuracy, completeness, clarity, edu_relevance, task_adherence) |
+| `04_ragas_eval.ipynb` | RAGAS RAG evaluation (faithfulness, answer relevancy, context precision, context recall) |
+| `05_hallucination.ipynb` | Composite hallucination analysis combining groundedness, RAGAS faithfulness, and judge accuracy |
+
+---
+
 ## Results
 
-All **30 runs** (5 per scenario × 3 scenarios × 2 frameworks) completed with
-**100% routing accuracy**. All latency values are **LangSmith-sourced** (100%
-clean latency, no `time.time()` fallback measurements recorded in either notebook).
+### Latency Benchmark (Notebooks 01 & 02)
 
-### Latency by Scenario
+All **30 runs** (5 per scenario × 3 scenarios × 2 frameworks) completed with
+**100% routing accuracy**. All latency values are **LangSmith-sourced**.
 
 | Scenario | LangGraph Avg | ADK Avg | Winner |
 |---|---|---|---|
@@ -83,58 +100,50 @@ clean latency, no `time.time()` fallback measurements recorded in either noteboo
 | Email HITL | 10.74s | 14.93s | LangGraph |
 | **Overall** | **20.80s** | **22.05s** | **LangGraph** |
 
-> All latency values are LangSmith end-to-end measurements. Scenario 3 includes
-> real human review + typing time for HITL decisions.
+> Scenario 3 latency includes real human review + typing time for HITL decisions.
 
-### LangGraph Per-Run Detail
+### LLM-as-a-Judge Quality Scores (Notebook 03)
 
-| Run | Scenario | Latency (s) |
-|---|---|---|
-| 1 | Lesson Plan | 27.78 |
-| 2 | Lesson Plan | 17.18 |
-| 3 | Lesson Plan | 26.93 |
-| 4 | Lesson Plan | 26.97 |
-| 5 | Lesson Plan | 32.00 |
-| 6 | Quiz Generation | 28.12 |
-| 7 | Quiz Generation | 27.55 |
-| 8 | Quiz Generation | 26.76 |
-| 9 | Quiz Generation | 16.89 |
-| 10 | Quiz Generation | 28.17 |
-| 11 | Email HITL | 12.73 |
-| 12 | Email HITL | 9.44 |
-| 13 | Email HITL | 10.13 |
-| 14 | Email HITL | 10.53 |
-| 15 | Email HITL | 10.87 |
+Outputs scored by `gemini-2.5-pro` on 5 dimensions (1–5 scale each, max 25 total).
+Evaluated on 3 runs per scenario per framework (18 total evaluations).
 
-### ADK Per-Run Detail
+| Framework | Avg Total | Accuracy | Completeness | Clarity | Edu Relevance | Task Adherence |
+|---|---|---|---|---|---|---|
+| **LangGraph** | **24.11** | 5.0 | **5.00** | **5.00** | **4.11** | **5.00** |
+| Google ADK | 21.67 | 5.0 | 4.44 | 4.67 | 3.67 | 3.89 |
 
-| Run | Scenario | Latency (s) |
-|---|---|---|
-| 1 | Lesson Plan | 18.44 |
-| 2 | Lesson Plan | 19.85 |
-| 3 | Lesson Plan | 26.39 |
-| 4 | Lesson Plan | 31.97 |
-| 5 | Lesson Plan | 27.44 |
-| 6 | Quiz Generation | 24.13 | 
-| 7 | Quiz Generation | 32.27 |
-| 8 | Quiz Generation | 19.21 | 
-| 9 | Quiz Generation | 28.69 |
-| 10 | Quiz Generation | 27.63 |
-| 11 | Email HITL | 13.97 |
-| 12 | Email HITL | 15.32 |
-| 13 | Email HITL | 15.15 |
-| 14 | Email HITL | 12.49 |
-| 15 | Email HITL | 17.70 |
+> LangGraph achieves perfect scores in completeness, clarity, and task adherence.
+> ADK's lower task_adherence (3.89) was partially driven by one email run (Run 3)
+> returning only a send confirmation without the draft content.
 
-### Latency Charts
+### RAGAS RAG Faithfulness (Notebook 04)
 
-| LangGraph | Google ADK |
-|---|---|
-| ![LangGraph Latency](output/langgraph_latency.png) | ![ADK Latency](output/adk_latency.png) |
+| Framework | Faithfulness | Answer Relevancy | Context Precision | Context Recall |
+|---|---|---|---|---|
+| **LangGraph** | **0.396** | **0.675** | 0.000 | 0.0 |
+| Google ADK | 0.278 | 0.663 | 0.222 | 0.0 |
 
-### Side-by-Side Comparison
+> LangGraph shows higher faithfulness (0.396 vs 0.278), meaning its outputs are
+> more grounded in retrieved context. Both frameworks returned 0.0 context recall,
+> reflecting the limited size of the test datastore.
 
-![LangGraph vs ADK](output/LG%20VS%20ADK.png)
+### Hallucination Analysis (Notebook 05)
+
+Composite hallucination score combines groundedness, RAGAS faithfulness, and judge accuracy.
+Lower composite hallucination % = more grounded output.
+
+| Framework | Scenario | Groundedness | RAGAS Faithfulness | Composite Halluc % |
+|---|---|---|---|---|
+| LangGraph | Lesson Plan | 1.0 | 0.964 | **34.5%** |
+| LangGraph | Quiz | 1.0 | 0.115 | 62.8% |
+| LangGraph | Email | 1.0 | 0.110 | 63.0% |
+| Google ADK | Lesson Plan | 1.0 | 0.705 | 43.2% |
+| Google ADK | Quiz | 1.0 | 0.037 | 65.4% |
+| Google ADK | Email | 1.0 | 0.000 | **66.7%** |
+
+> Both frameworks achieve groundedness = 1.0. LangGraph demonstrates lower
+> hallucination in lesson plan generation (34.5% vs 43.2%). ADK email runs
+> retrieved 0 contexts, contributing to 66.7% composite hallucination.
 
 ### Key Findings
 
@@ -146,6 +155,27 @@ clean latency, no `time.time()` fallback measurements recorded in either noteboo
 | Token tracking | Not available natively (`-1` sentinel) | Available via `usage_metadata` events |
 | Response verbosity | Higher (lesson plans significantly longer) | Lower/more concise |
 | Overall avg latency | **20.80s** | 22.05s |
+| LLM Judge avg total | **24.11 / 25** | 21.67 / 25 |
+| RAGAS faithfulness | **0.396** | 0.278 |
+| HITL edit capability | Approve / Reject / **Edit-in-place** | Binary approve/reject only |
+
+### Latency Charts
+
+| LangGraph | Google ADK |
+|---|---|
+| ![LangGraph Latency](output/langgraph_latency_chart.png) | ![ADK Latency](output/adk_latency_chart.png) |
+
+### LLM-as-a-Judge Radar
+
+![Judge Radar](output/judge_radar_overall.png)
+
+### RAGAS Comparison
+
+![RAGAS Comparison](output/ragas_comparison_chart.png)
+
+### Hallucination Heatmap
+
+![Hallucination Heatmap](output/hallucination_heatmap.png)
 
 ---
 
@@ -153,21 +183,31 @@ clean latency, no `time.time()` fallback measurements recorded in either noteboo
 ```
 langgraph-adk-edu-comparison/
 ├── notebooks/
-│ ├── 01_langgraph_system.ipynb # LangGraph implementation + experiment
-│ └── 02_adk_system.ipynb # Google ADK implementation + experiment
+│   ├── 01_langgraph_system.ipynb    # LangGraph implementation + latency experiment
+│   ├── 02_adk_system.ipynb          # Google ADK implementation + latency experiment
+│   ├── 03_llm_judge.ipynb           # LLM-as-a-Judge quality evaluation
+│   ├── 04_ragas_eval.ipynb          # RAGAS RAG faithfulness evaluation
+│   └── 05_hallucination.ipynb       # Composite hallucination analysis
 ├── docs/
-│ ├── langgraph_experiment_report.md # Detailed technical report — LangGraph
-│ └── adk_experiment_report.md # Detailed technical report — ADK
+│   ├── langgraph_experiment_report.md   # Technical report — LangGraph (NB 01)
+│   ├── adk_experiment_report.md         # Technical report — ADK (NB 02)
+│   ├── judge_report.md                  # LLM Judge evaluation report (NB 03)
+│   └── ragas_report.md                  # RAGAS evaluation report (NB 04)
 ├── output/
-│ ├── langgraph_metrics.csv # Raw per-run data (15 rows)
-│ ├── adk_metrics.csv # Raw per-run data (15 rows)
-│ ├── langgraph_latency_chart.png # Latency bar chart — LangGraph
-│ ├── adk_latency_chart.png # Latency bar chart — ADK
-│ └── LG VS ADK.png # Side-by-side comparison chart
+│   ├── langgraph_metrics.csv            # Raw per-run latency data (15 rows)
+│   ├── adk_metrics.csv                  # Raw per-run latency data (15 rows)
+│   ├── judge_results.csv                # Per-run judge scores
+│   ├── hallucination_results.csv        # Per-run hallucination scores
+│   ├── hallucination_composite.csv      # Aggregated composite hallucination
+│   ├── langgraph_latency_chart.png      # Latency bar chart — LangGraph
+│   ├── adk_latency_chart.png            # Latency bar chart — ADK
+│   ├── judge_radar_overall.png          # LLM Judge radar chart
+│   ├── ragas_comparison_chart.png       # RAGAS comparison chart
+│   └── hallucination_heatmap.png        # Hallucination heatmap
 ├── traces/
-│ ├── langgraph_traces.json # LangSmith traces for all runs
-│ └── adk_traces.json # LangSmith traces for all runs
-├── .env.example # Environment variable template
+│   ├── langgraph_traces.json            # LangSmith traces — all runs
+│   └── adk_traces.json                  # LangSmith traces — all runs
+├── .env.example
 ├── .gitignore
 ├── LICENSE
 └── README.md
@@ -182,7 +222,7 @@ langgraph-adk-edu-comparison/
 - Python 3.10+
 - Google Cloud project with **Vertex AI API** and **Discovery Engine API** enabled
 - A Vertex AI Search datastore populated with course materials
-- LangSmith account for tracing (used by both notebooks — project: `langgraph-adk-edu-comparison`)
+- LangSmith account for tracing (project: `langgraph-adk-edu-comparison`)
 
 ### 1. Clone & Configure
 
@@ -190,7 +230,7 @@ langgraph-adk-edu-comparison/
 git clone https://github.com/Timmythaw/langgraph-adk-edu-comparison.git
 cd langgraph-adk-edu-comparison
 cp .env.example .env
-# Edit .env with your GCP project ID, datastore ID, and credentials
+# Edit .env with your GCP credentials
 ```
 
 ### 2. Environment Variables
@@ -198,11 +238,11 @@ cp .env.example .env
 ```bash
 # Shared
 GOOGLE_CLOUD_PROJECT=your-gcp-project-id
-GOOGLE_CLOUD_LOCATION=global                    # Vertex AI Search location
+GOOGLE_CLOUD_LOCATION=global
 VERTEX_AI_SEARCH_DATASTORE_ID=your-datastore-id
 GOOGLE_APPLICATION_CREDENTIALS=./service-account.json
 
-# LangSmith tracing (used by both notebooks)
+# LangSmith tracing (used by all notebooks)
 LANGCHAIN_TRACING_V2=true
 LANGCHAIN_API_KEY=your-langsmith-api-key
 LANGCHAIN_PROJECT=langgraph-adk-edu-comparison
@@ -210,25 +250,28 @@ LANGCHAIN_ENDPOINT=https://api.smith.langchain.com
 
 # ADK only
 GOOGLE_GENAI_USE_VERTEXAI=1
-LANGSMITH_API_KEY=your-langsmith-api-key        # ADK uses langsmith package directly
+LANGSMITH_API_KEY=your-langsmith-api-key
 ```
 
 ### 3. Run in Google Colab (Recommended)
 
-The notebooks are self-contained and designed for Colab. Click the badges at the top of this README, then:
+The notebooks are self-contained and designed for Colab. Run them **in order** (01 → 05):
 
 1. Store `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`, `VERTEX_AI_SEARCH_DATASTORE_ID`, and `LANGSMITH_API_KEY` as **Colab Secrets**
 2. Run all cells in order
 3. During Scenario 3 (Email HITL):
    - LangGraph: type `yes` to approve, `no` to reject, or **paste edited text** to approve with changes
    - ADK: type `yes` to approve or anything else to reject
+4. Notebooks 03–05 consume the CSV outputs from notebooks 01–02
 
 ---
 
 ## Documentation
 
-- [LangGraph Experiment Report](docs/langgraph_experiment_report.md) — implementation details, node descriptions, and full results
-- [ADK Experiment Report](docs/adk_experiment_report.md) — implementation details, agent architecture, and full results
+- [LangGraph Experiment Report](docs/langgraph_experiment_report.md) — implementation details, node descriptions, and full latency results
+- [ADK Experiment Report](docs/adk_experiment_report.md) — implementation details, agent architecture, and full latency results
+- [LLM Judge Report](docs/judge_report.md) — quality scoring methodology and per-run verdicts
+- [RAGAS Report](docs/ragas_report.md) — RAG faithfulness evaluation methodology and results
 
 ---
 
@@ -243,6 +286,7 @@ The notebooks are self-contained and designed for Colab. Click the badges at the
 | State | `MemorySaver` + typed `TeacherState` | `InMemorySessionService` + `output_key` chaining |
 | Retry logic | None | `HttpRetryOptions` (5 attempts, 429/5xx) |
 | Tracing | `LANGCHAIN_TRACING_V2` (native) | `langsmith.integrations.google_adk.configure_google_adk()` |
+| Evaluation | LLM-as-a-Judge + RAGAS + Hallucination Analysis | LLM-as-a-Judge + RAGAS + Hallucination Analysis |
 | Runtime | Google Colab / Python 3.12 | Google Colab / Python 3.12 |
 
 ---
